@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accurate Hunger Games Simulator</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #1a1a1a; 
+            color: #e0e0e0; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+        }
+        h1, h2, h3 { 
+            color: #ff9f43; 
+            text-align: center; 
+        }
+        .panel { 
+            background-color: #2d2d2d; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
+        }
+        .config-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .config-item label {
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #ff9f43;
+        }
+        .config-item input, .config-item select {
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            width: 120px;
+        }
+        .config-item.wide {
+            min-width: 240px;
+        }
+        .config-item.wide input,
+        .config-item.wide textarea {
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .config-item textarea {
+            min-height: 90px;
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            gap: 10px; 
+            margin-bottom: 20px; 
+        }
+        .player-card, .district-card { 
+            background: #3d3d3d; 
+            padding: 10px; 
+            border-radius: 4px; 
+            border-left: 4px solid #ff9f43; 
+        }
+        .player-card label, .district-card label { 
+            display: block; 
+            font-size: 12px; 
+            color: #aaa; 
+            margin-bottom: 4px;
+        }
+        .player-card input, .district-card input { 
+            width: 90%; 
+            background: #222; 
+            border: 1px solid #555; 
+            color: #fff; 
+            padding: 4px; 
+            border-radius: 3px; 
+        }
+        button { 
+            background-color: #ff9f43; 
+            color: #1a1a1a; 
+            border: none; 
+            padding: 12px 24px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            display: block; 
+            margin: 20px auto; 
+            transition: background 0.2s; 
+        }
+        button:hover { 
+            background-color: #ffb366; 
+        }
+        .log-entry { 
+            background: #222; 
+            padding: 10px; 
+            border-left: 4px solid #54a0ff; 
+            margin-bottom: 8px; 
+            border-radius: 4px; 
+        }
+        .death { 
+            border-left-color: #ee5253; 
+            background: #2f1e1e; 
+        }
+        .status-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+        }
+        .status-table th, .status-table td { 
+            padding: 10px; 
+            text-align: left; 
+            border-bottom: 1px solid #444; 
+        }
+        .status-table th { 
+            background-color: #383838; 
+            color: #ff9f43; 
+        }
+        .status-alive { 
+            color: #1dd1a1; 
+            font-weight: bold; 
+        }
+        .status-dead { 
+            color: #ee5253; 
+            text-decoration: line-through; 
+        }
+        .badge { 
+            background: #576574; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-size: 12px; 
+            margin-right: 4px; 
+        }
+        .error {
+            color: #ff6b6b;
+            text-align: center;
+        }
+        .save-status {
+            color: #1dd1a1;
+            text-align: center;
+        }
+        .save-status.error {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>The Hunger Games Simulator</h1>
+        
+        <!-- Config Setup Screen -->
+        <div id="config-panel" class="panel">
+            <h2>Game Parameters</h2>
+            <div class="config-group">
+                <div class="config-item">
+                    <label for="district-count">Districts</label>
+                    <input type="number" id="district-count" value="10" min="1" max="50">
+                </div>
+                <div class="config-item">
+                    <label for="tributes-per-district">Tributes Per District</label>
+                    <input type="number" id="tributes-per-district" value="2" min="1" max="10">
+                </div>
+                <div class="config-item">
+                    <label for="feast-day">Feast Day</label>
+                    <select id="feast-day">
+                        <option value="none">No feast</option>
+                    </select>
+                </div>
+                <div class="config-item">
+                    <label for="daily-weapons">Weapons Available Per Day</label>
+                    <input type="number" id="daily-weapons" value="10" min="0" max="50">
+                </div>
+                <div class="config-item wide">
+                    <label for="custom-weapons">Custom Weapons (one per line: Name, Power)</label>
+                    <textarea id="custom-weapons" maxlength="2000" placeholder="Crossbow, 4&#10;Dagger, 2"></textarea>
+                </div>
+                <div class="config-item wide">
+                    <label for="starting-items">Starting Items for Every Tribute (comma-separated)</label>
+                    <input type="text" id="starting-items" maxlength="500" placeholder="Food &amp; Water, Bandage">
+                </div>
+            </div>
+            <p id="config-error" class="error" role="alert"></p>
+            <p id="config-save-status" class="save-status" role="status" aria-live="polite"></p>
+            <button onclick="generateSetupGrids()">Apply & Customize Names</button>
+        </div>
+
+        <!-- Tribute Customization Screen -->
+        <div id="setup-panel" class="panel" style="display:none;">
+            <h2>Customize District Names</h2>
+            <div id="districts-setup-grid" class="grid"></div>
+
+            <h2>Tribute Settings</h2>
+            <div id="players-setup-grid" class="grid"></div>
+            <p id="setup-save-status" class="save-status" role="status" aria-live="polite"></p>
+            <button onclick="startSimulation()">Launch Bloodbath</button>
+        </div>
+
+        <!-- Simulation Screen -->
+        <div id="sim-panel" class="panel" style="display:none;">
+            <h2 id="round-title">The Bloodbath</h2>
+            <div id="action-log" aria-live="polite"></div>
+            <section id="supply-panel" aria-label="Send supply drop">
+                <h3>Send a Supply Drop</h3>
+                <div class="config-group">
+                    <div class="config-item">
+                        <label for="supply-recipient">Living Tribute</label>
+                        <select id="supply-recipient"></select>
+                    </div>
+                    <div class="config-item">
+                        <label for="supply-item">Supply</label>
+                        <select id="supply-item"></select>
+                    </div>
+                </div>
+                <p id="supply-status" class="save-status" role="status" aria-live="polite"></p>
+                <button id="supply-send-btn" onclick="sendSupplyDrop()">Send Supply Drop</button>
+            </section>
+            <button id="next-btn" onclick="advanceRound()">Proceed to Next Day</button>
+        </div>
+
+        <!-- Real-Time Roster Status & Inventory Panel -->
+        <div id="inventory-panel" class="panel" style="display:none;">
+            <h2>Live Arena Standings & Inventories</h2>
+            <table class="status-table">
+                <thead>
+                    <tr>
+                        <th>District</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Kills</th>
+                        <th>Inventory (Weapons Affect Combat Chance)</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        const defaultNames = [
+            "Katniss", "Peeta", "Cato", "Clove", "Finnick", "Annie", "Thresh", "Rue", 
+            "Marvel", "Glimmer", "Beetee", "Wiress", "Gloss", "Cashmere", "Enobaria", 
+            "Brutus", "Johanna", "Blight", "Chaff", "Seeder", "Lyme", "Treech", "Wovey", "Bob"
+        ];
+
+        const weaponPool = [
+            { name: "Bow & Arrows", power: 4 },
+            { name: "Trident", power: 4 },
+            { name: "Sword", power: 3.5 },
+            { name: "Spear", power: 3 },
+            { name: "Axe", power: 3 },
+            { name: "Throwing Knives", power: 2.5 },
+            { name: "Sickle", power: 2 },
+            { name: "Mace", power: 2 }
+        ];
+
+        let players = [];
+        let currentDay = 0; 
+        let gameOver = false;
+        let districtCount = 10;
+        let tributesPerDistrict = 2;
+        let feastDay = 3;
+        let dailyWeaponLimit = 10;
+        let weaponsRemainingToday = dailyWeaponLimit;
+        let activeWeaponPool = [...weaponPool];
+        let supplyItems = [];
+        const setupStorageKey = "hungerGamesSimulatorSetup";
+
+        for (let day = 1; day <= 30; day++) {
+            const option = document.createElement("option");
+            option.value = String(day);
+            option.textContent = `Day ${day}`;
+            if (day === feastDay) option.selected = true;
+            document.getElementById("feast-day").appendChild(option);
+        }
+
+        function setPersistenceStatus(message, isError = false) {
+            ["config-save-status", "setup-save-status"].forEach(id => {
+                const status = document.getElementById(id);
+                status.textContent = message;
+                status.classList.toggle("error", isError);
+            });
+        }
+
+        function loadSavedSetup() {
+            try {
+                const saved = localStorage.getItem(setupStorageKey);
+                if (!saved) return null;
+
+                const setup = JSON.parse(saved);
+                if (!setup || !Number.isInteger(setup.districtCount) ||
+                    setup.districtCount < 1 || setup.districtCount > 50 ||
+                    !Number.isInteger(setup.tributesPerDistrict) ||
+                    setup.tributesPerDistrict < 1 || setup.tributesPerDistrict > 10 ||
+                    !Array.isArray(setup.districtNames) || !Array.isArray(setup.tributeNames) ||
+                    (setup.feastDay !== null && setup.feastDay !== undefined &&
+                        (!Number.isInteger(setup.feastDay) || setup.feastDay < 1 || setup.feastDay > 30)) ||
+                    (setup.dailyWeaponLimit !== undefined &&
+                        (!Number.isInteger(setup.dailyWeaponLimit) || setup.dailyWeaponLimit < 0 || setup.dailyWeaponLimit > 50)) ||
+                    (setup.customWeapons !== undefined &&
+                        (!Array.isArray(setup.customWeapons) ||
+                            !setup.customWeapons.every(item => item && typeof item.name === "string" &&
+                                Number.isFinite(item.power) && item.power > 0 && item.power <= 100))) ||
+                    (setup.startingItems !== undefined && typeof setup.startingItems !== "string") ||
+                    !setup.districtNames.every(name => typeof name === "string") ||
+                    !setup.tributeNames.every(name => typeof name === "string")) {
+                    throw new Error("Saved setup has an invalid format.");
+                }
+                return setup;
+            } catch (error) {
+                setPersistenceStatus("Could not load saved names. You can continue with the default names.", true);
+                return null;
+            }
+        }
+
+        function parseCustomWeapons() {
+            const lines = document.getElementById("custom-weapons").value
+                .split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(Boolean);
+            if (lines.length > 20) {
+                throw new Error("Add no more than 20 custom weapons.");
+            }
+
+            return lines.map((line, index) => {
+                const match = line.match(/^(.+?)\s*[,;|]\s*(\d+(?:\.\d+)?)$/);
+                if (!match) {
+                    throw new Error(`Custom weapon line ${index + 1} must use the format Name, Power.`);
+                }
+                const name = match[1].trim();
+                const power = Number(match[2]);
+                if (!name || name.length > 40 || !Number.isFinite(power) || power <= 0 || power > 100) {
+                    throw new Error(`Custom weapon line ${index + 1} needs a name and power from 0.1 to 100.`);
+                }
+                return { name, power };
+            });
+        }
+
+        function saveSetup() {
+            const previousSetup = loadSavedSetup();
+            const districtNames = previousSetup && previousSetup.districtCount === districtCount
+                ? [...previousSetup.districtNames]
+                : [];
+            const tributeNames = previousSetup &&
+                previousSetup.districtCount === districtCount &&
+                previousSetup.tributesPerDistrict === tributesPerDistrict
+                ? [...previousSetup.tributeNames]
+                : [];
+            for (let d = 1; d <= districtCount; d++) {
+                const input = document.getElementById(`d-name-${d}`);
+                if (input) districtNames[d - 1] = input.value;
+            }
+            for (let i = 0; i < districtCount * tributesPerDistrict; i++) {
+                const input = document.getElementById(`p-name-${i}`);
+                if (input) tributeNames[i] = input.value;
+            }
+
+            let customWeapons;
+            try {
+                customWeapons = parseCustomWeapons();
+                document.getElementById("config-error").textContent = "";
+            } catch (error) {
+                document.getElementById("config-error").textContent = error.message;
+                return;
+            }
+
+            try {
+                const feastDayValue = document.getElementById("feast-day").value;
+                const dailyWeaponInput = document.getElementById("daily-weapons");
+                const dailyWeaponValue = Number(dailyWeaponInput.value);
+                if (!Number.isInteger(dailyWeaponValue) || dailyWeaponValue < 0 || dailyWeaponValue > 50) {
+                    document.getElementById("config-error").textContent = "Set weapons available per day to a number from 0 to 50.";
+                    return;
+                }
+                localStorage.setItem(setupStorageKey, JSON.stringify({
+                    districtCount,
+                    tributesPerDistrict,
+                    feastDay: feastDayValue === "none" ? null : Number(feastDayValue),
+                    dailyWeaponLimit: dailyWeaponValue,
+                    customWeapons,
+                    startingItems: document.getElementById("starting-items").value,
+                    districtNames,
+                    tributeNames
+                }));
+                setPersistenceStatus("Roster and game settings saved in this browser.");
+            } catch (error) {
+                setPersistenceStatus("Could not save names in this browser. Check its storage or privacy settings.", true);
+            }
+        }
+
+        // Step 1: Initialize custom districts and dynamic tribute input fields
+        function generateSetupGrids() {
+            const districtValue = Number(document.getElementById("district-count").value);
+            const tributeValue = Number(document.getElementById("tributes-per-district").value);
+            const selectedFeastDay = document.getElementById("feast-day").value;
+            const weaponLimit = Number(document.getElementById("daily-weapons").value);
+            const error = document.getElementById("config-error");
+            if (!Number.isInteger(districtValue) || districtValue < 1 || districtValue > 50 ||
+                !Number.isInteger(tributeValue) || tributeValue < 1 || tributeValue > 10 ||
+                !Number.isInteger(weaponLimit) || weaponLimit < 0 || weaponLimit > 50 ||
+                (selectedFeastDay !== "none" &&
+                    (!Number.isInteger(Number(selectedFeastDay)) || Number(selectedFeastDay) < 1 || Number(selectedFeastDay) > 30))) {
+                error.textContent = "Choose valid district, tribute, feast day, and daily weapon settings.";
+                return;
+            }
+            try {
+                parseCustomWeapons();
+            } catch (customWeaponError) {
+                error.textContent = customWeaponError.message;
+                return;
+            }
+            error.textContent = "";
+            districtCount = districtValue;
+            tributesPerDistrict = tributeValue;
+            feastDay = selectedFeastDay === "none" ? null : Number(selectedFeastDay);
+            dailyWeaponLimit = weaponLimit;
+            const savedSetup = loadSavedSetup();
+
+            const districtGrid = document.getElementById("districts-setup-grid");
+            const playerGrid = document.getElementById("players-setup-grid");
+            
+            districtGrid.innerHTML = "";
+            playerGrid.innerHTML = "";
+
+            // Create District naming inputs
+            for (let d = 1; d <= districtCount; d++) {
+                districtGrid.insertAdjacentHTML("beforeend", `
+                    <div class="district-card">
+                        <label>District ${d} Name</label>
+                        <input type="text" id="d-name-${d}" value="District ${d}" maxlength="40">
+                    </div>
+                `);
+                const savedDistrictName = savedSetup && savedSetup.districtCount === districtCount
+                    ? savedSetup.districtNames[d - 1]
+                    : null;
+                if (savedDistrictName !== undefined && savedDistrictName !== null) {
+                    districtGrid.lastElementChild.querySelector("input").value = savedDistrictName;
+                }
+            }
+
+            // Create Player tribute inputs mapped cleanly to their district assignment
+            let playerIndex = 0;
+            for (let d = 1; d <= districtCount; d++) {
+                for (let t = 1; t <= tributesPerDistrict; t++) {
+                    const defaultName = defaultNames[playerIndex % defaultNames.length] + (playerIndex >= defaultNames.length ? ` ${Math.floor(playerIndex/defaultNames.length) + 1}` : "");
+                    playerGrid.insertAdjacentHTML("beforeend", `
+                        <div class="player-card">
+                            <label id="p-label-${playerIndex}">District ${d} - Tribute ${t}</label>
+                            <input type="text" id="p-name-${playerIndex}" value="${defaultName}" maxlength="40">
+                        </div>
+                    `);
+                    const savedTributeName = savedSetup &&
+                        savedSetup.districtCount === districtCount &&
+                        savedSetup.tributesPerDistrict === tributesPerDistrict
+                        ? savedSetup.tributeNames[playerIndex]
+                        : null;
+                    if (savedTributeName !== undefined && savedTributeName !== null) {
+                        playerGrid.lastElementChild.querySelector("input").value = savedTributeName;
+                    }
+                    playerIndex++;
+                }
+            }
+
+            document.getElementById("setup-panel").style.display = "block";
+            districtGrid.querySelectorAll("input").forEach(input => {
+                input.addEventListener("input", saveSetup);
+            });
+            playerGrid.querySelectorAll("input").forEach(input => {
+                input.addEventListener("input", saveSetup);
+            });
+            saveSetup();
+            // Dynamically link district name changes visually down into tribute label previews
+            for (let d = 1; d <= districtCount; d++) {
+                const inputEl = document.getElementById(`d-name-${d}`);
+                inputEl.addEventListener('input', () => {
+                    let idx = 0;
+                    for (let dist = 1; dist <= districtCount; dist++) {
+                        for (let trib = 1; trib <= tributesPerDistrict; trib++) {
+                            if(dist === d) {
+                                document.getElementById(`p-label-${idx}`).innerText = `${inputEl.value || 'District ' + d} - Tribute ${trib}`;
+                            }
+                            idx++;
+                        }
+                    }
+                });
+            }
+        }
+
+        function startSimulation() {
+            players = [];
+            let playerIndex = 0;
+
+            for (let d = 1; d <= districtCount; d++) {
+                const dName = document.getElementById(`d-name-${d}`).value.trim() || `District ${d}`;
+                for (let t = 1; t <= tributesPerDistrict; t++) {
+                    const pName = document.getElementById(`p-name-${playerIndex}`).value.trim() || `Tribute ${playerIndex + 1}`;
+                    players.push({
+                        id: playerIndex,
+                        name: pName,
+                        districtName: dName,
+                        alive: true,
+                        inventory: [],
+                        kills: 0,
+                        deathReason: ""
+                    });
+                    playerIndex++;
+                }
+            }
+
+            document.getElementById("config-panel").style.display = "none";
+            document.getElementById("setup-panel").style.display = "none";
+            document.getElementById("sim-panel").style.display = "block";
+            document.getElementById("inventory-panel").style.display = "block";
+            activeWeaponPool = [...weaponPool, ...parseCustomWeapons()];
+            weaponsRemainingToday = dailyWeaponLimit;
+            const startingItems = document.getElementById("starting-items").value
+                .split(",")
+                .map(item => item.trim())
+                .filter(Boolean);
+            players.forEach(player => {
+                startingItems.forEach(name => {
+                    const weapon = activeWeaponPool.find(item => item.name.toLowerCase() === name.toLowerCase());
+                    player.inventory.push(weapon
+                        ? { ...weapon }
+                        : { name, power: 0 });
+                });
+            });
+            populateSupplyOptions();
+            runBloodbath();
+        }
+
+        function updateInventoryUI() {
+            const tbody = document.getElementById("inventory-tbody");
+            tbody.innerHTML = "";
+            players.forEach(p => {
+                const row = document.createElement("tr");
+                const districtCell = document.createElement("td");
+                districtCell.textContent = p.districtName;
+                row.appendChild(districtCell);
+
+                const nameCell = document.createElement("td");
+                nameCell.textContent = p.name;
+                nameCell.style.fontWeight = "bold";
+                row.appendChild(nameCell);
+
+                const statusCell = document.createElement("td");
+                statusCell.className = p.alive ? "status-alive" : "status-dead";
+                statusCell.textContent = p.alive ? "Alive" : `Dead: ${p.deathReason}`;
+                row.appendChild(statusCell);
+
+                const killsCell = document.createElement("td");
+                killsCell.textContent = String(p.kills);
+                row.appendChild(killsCell);
+
+                const inventoryCell = document.createElement("td");
+                if (!p.alive) {
+                    inventoryCell.textContent = "—";
+                } else if (p.inventory.length === 0) {
+                    inventoryCell.textContent = "None";
+                } else {
+                    p.inventory.forEach(item => {
+                        const badge = document.createElement("span");
+                        badge.className = "badge";
+                        badge.textContent = item.power > 0
+                            ? `⚔️ ${item.name} (Power: ${item.power})`
+                            : `🥫 ${item.name}`;
+                        inventoryCell.appendChild(badge);
+                    });
+                }
+                row.appendChild(inventoryCell);
+                tbody.appendChild(row);
+            });
+            populateSupplyRecipients();
+        }
+
+        function populateSupplyRecipients() {
+            const select = document.getElementById("supply-recipient");
+            const selectedId = select.value;
+            select.innerHTML = "";
+            const livingPlayers = players.filter(player => player.alive);
+            livingPlayers.forEach(player => {
+                const option = document.createElement("option");
+                option.value = String(player.id);
+                option.textContent = `${player.name} (${player.districtName})`;
+                select.appendChild(option);
+            });
+            if (livingPlayers.some(player => String(player.id) === selectedId)) {
+                select.value = selectedId;
+            }
+            select.disabled = livingPlayers.length === 0 || gameOver;
+            document.getElementById("supply-send-btn").disabled = livingPlayers.length === 0 || gameOver;
+        }
+
+        function populateSupplyOptions() {
+            const select = document.getElementById("supply-item");
+            select.innerHTML = "";
+            supplyItems = [{ name: "Food & Water", power: 0 }];
+            activeWeaponPool.forEach(item => {
+                if (!supplyItems.some(supply => supply.name.toLowerCase() === item.name.toLowerCase())) {
+                    supplyItems.push(item);
+                }
+            });
+            supplyItems.forEach((item, index) => {
+                const option = document.createElement("option");
+                option.value = String(index);
+                option.textContent = item.power > 0 ? `${item.name} (Power: ${item.power})` : item.name;
+                select.appendChild(option);
+            });
+        }
+
+        function sendSupplyDrop() {
+            const playerId = Number(document.getElementById("supply-recipient").value);
+            const itemIndex = Number(document.getElementById("supply-item").value);
+            const recipient = players.find(player => player.id === playerId && player.alive);
+            const item = supplyItems[itemIndex];
+            const status = document.getElementById("supply-status");
+            if (!recipient || !item) {
+                status.textContent = "Choose a living tribute and a valid supply.";
+                status.classList.add("error");
+                return;
+            }
+            recipient.inventory.push({ ...item });
+            status.classList.remove("error");
+            status.textContent = `Supply drop sent to ${recipient.name}.`;
+            logAction(`📦 A supply drop delivers ${item.name} to ${recipient.name} (${recipient.districtName}).`);
+            updateInventoryUI();
+        }
+
+        function logAction(text, isDeath = false) {
+            const log = document.getElementById("action-log");
+            const entry = document.createElement("div");
+            entry.className = `log-entry${isDeath ? " death" : ""}`;
+            entry.textContent = text;
+            log.appendChild(entry);
+        }
+
+        function getBestWeaponPower(player) {
+            const weaponPowers = player.inventory
+                .map(item => item.power)
+                .filter(power => Number.isFinite(power) && power > 0);
+            if (weaponPowers.length === 0) return 1.0;
+            return Math.max(...weaponPowers);
+        }
+
+        function hasFoodAndWater(player) {
+            return player.inventory.some(item => item.name === "Food & Water");
+        }
+
+        function getDailyWeapon() {
+            if (weaponsRemainingToday <= 0 || activeWeaponPool.length === 0) return null;
+            weaponsRemainingToday--;
+            return activeWeaponPool[Math.floor(Math.random() * activeWeaponPool.length)];
+        }
+
+        function handleCombat(p1, p2) {
+            const p1Power = getBestWeaponPower(p1);
+            const p2Power = getBestWeaponPower(p2);
+            const totalPower = p1Power + p2Power;
+            const p1WinChance = p1Power / totalPower;
+            
+            let winner, loser;
+            if (Math.random() < p1WinChance) {
+                winner = p1; loser = p2;
+            } else {
+                winner = p2; loser = p1;
+            }
+            
+            loser.alive = false;
+            winner.kills++;
+            
+            let weaponContext = "";
+            if (winner.inventory.length > 0) {
+                const weapon = winner.inventory.find(item => item.power > 0);
+                weaponContext = weapon ? ` using their ${weapon.name}` : "";
+            }
+            loser.deathReason = `Killed by ${winner.name}`;
+            logAction(`💥 ${winner.name} (${winner.districtName}) fights ${loser.name} (${loser.districtName}) and kills them${weaponContext}!`, true);
+            
+            if (loser.inventory.length > 0) {
+                winner.inventory.push(...loser.inventory);
+                logAction(`🎒 ${winner.name} loots the body and takes: ${loser.inventory.map(w => w.name).join(', ')}.`);
+                loser.inventory = [];
+            }
+        }
+
+        function runBloodbath() {
+            document.getElementById("round-title").innerText = "The Bloodbath";
+            document.getElementById("action-log").innerHTML = "";
+            let activePlayers = players.filter(p => p.alive);
+            
+            activePlayers.forEach(p => {
+                let rng = Math.random();
+                if (rng < 0.35) {
+                    let wp = getDailyWeapon();
+                    if (wp) {
+                        p.inventory.push(wp);
+                        logAction(`🏃 ${p.name} (${p.districtName}) steps up to the platform and grabs a ${wp.name}.`);
+                    }
+                } else if (rng < 0.55) {
+                    p.inventory.push({ name: "Food & Water", power: 0 });
+                    logAction(`🏃 ${p.name} (${p.districtName}) grabs a backpack of food and retreats into the woods.`);
+                } else {
+                    logAction(`🏃 ${p.name} (${p.districtName}) panics and runs away from the Cornucopia immediately.`);
+                }
+            });
+
+            // Adjust bloodbath battle scaling depending on scale size
+            let combatLoops = Math.max(1, Math.floor(activePlayers.length / 6));
+            for (let i = 0; i < combatLoops; i++) {
+                let alive = players.filter(p => p.alive);
+                if (alive.length < 2) break;
+                let p1 = alive.splice(Math.floor(Math.random() * alive.length), 1)[0];
+                let p2 = alive.splice(Math.floor(Math.random() * alive.length), 1)[0];
+                handleCombat(p1, p2);
+            }
+            updateInventoryUI();
+            checkWinCondition();
+        }
+
+        function runFeast() {
+            document.getElementById("round-title").innerText = `Day ${currentDay} — The Feast`;
+            document.getElementById("action-log").innerHTML = "";
+            logAction("🎁 A feast is held at the Cornucopia. Living tributes can risk the journey for supplies!");
+
+            players.filter(player => player.alive).forEach(player => {
+                if (!player.alive) return;
+                if (Math.random() < 0.7) {
+                    player.inventory.push({ name: "Food & Water", power: 0 });
+                    logAction(`🎒 ${player.name} (${player.districtName}) reaches the feast and secures food and water.`);
+                    if (Math.random() < 0.2) {
+                        const weapon = getDailyWeapon();
+                        if (weapon) {
+                            player.inventory.push(weapon);
+                            logAction(`⚔️ ${player.name} also takes a ${weapon.name} from the feast.`);
+                        }
+                    }
+                    if (Math.random() < 0.2) {
+                        const rivals = players.filter(target => target.alive && target.id !== player.id);
+                        if (rivals.length > 0) {
+                            const rival = rivals[Math.floor(Math.random() * rivals.length)];
+                            handleCombat(player, rival);
+                        }
+                    }
+                } else {
+                    logAction(`🌲 ${player.name} stays hidden instead of risking the trip to the feast.`);
+                }
+            });
+            updateInventoryUI();
+            checkWinCondition();
+        }
+
+        function advanceRound() {
+            if (gameOver) return;
+            currentDay++;
+            weaponsRemainingToday = dailyWeaponLimit;
+            document.getElementById("action-log").innerHTML = "";
+            if (currentDay === feastDay) {
+                runFeast();
+                return;
+            }
+            document.getElementById("round-title").innerText = `Day ${currentDay}`;
+            let alive = players.filter(p => p.alive);
+
+            alive.forEach(p => {
+                if (!p.alive) return; 
+                let roll = Math.random();
+                if (roll < 0.25) {
+                    let wp = getDailyWeapon();
+                    if (wp) {
+                        p.inventory.push(wp);
+                        logAction(`🔍 ${p.name} searches an abandoned crate and finds a ${wp.name}.`);
+                    } else {
+                        p.inventory.push({ name: "Food & Water", power: 0 });
+                        logAction(`🔍 ${p.name} searches an abandoned crate and finds food and water.`);
+                    }
+                } else if (roll < 0.50) {
+                    let targets = players.filter(t => t.alive && t.id !== p.id);
+                    if (targets.length > 0) {
+let victim = targets[Math.floor(Math.random() * targets.length)];
+handleCombat(p, victim);
+}
+} else if (roll < 0.65) {
+p.alive = false;
+let hazards = ["eating toxic berries", "getting tracked down by mutant mutts", "a forest fire"];
+if (!hasFoodAndWater(p)) {
+    hazards.push("dehydration");
+}
+p.deathReason = "Environmental hazard";
+logAction(`💀 ${p.name} (${p.districtName}) died from ${hazards[Math.floor(Math.random() * hazards.length)]}.`, true);
+} else {
+let actions = ["hides in a tree to rest.", "camouflages themselves in the mud.", "wonders if anyone back home misses them.", "hunts for fresh water sources."];
+logAction(`🍃 ${p.name} ${actions[Math.floor(Math.random() * actions.length)]}`);
+}
+});
+updateInventoryUI();
+checkWinCondition();
+}
+function checkWinCondition() {
+let alive = players.filter(p => p.alive);
+if (alive.length === 1) {
+logAction(`🏆 🎉 THE WINNER IS ${alive[0].name} FROM ${alive[0].districtName.toUpperCase()}! 🎉`);
+showBackToStartButton();
+gameOver = true;
+} else if (alive.length === 0) {
+logAction("💀 Everyone has died. There are no victors this year.");
+showBackToStartButton();
+gameOver = true;
+}
+}
+
+function showBackToStartButton() {
+const button = document.getElementById("next-btn");
+button.disabled = false;
+button.innerText = "Back to Start";
+button.onclick = returnToStart;
+populateSupplyRecipients();
+}
+
+function returnToStart() {
+players = [];
+currentDay = 0;
+gameOver = false;
+document.getElementById("config-panel").style.display = "block";
+document.getElementById("setup-panel").style.display = "none";
+document.getElementById("sim-panel").style.display = "none";
+document.getElementById("inventory-panel").style.display = "none";
+document.getElementById("action-log").innerHTML = "";
+document.getElementById("inventory-tbody").innerHTML = "";
+const button = document.getElementById("next-btn");
+button.disabled = false;
+button.innerText = "Proceed to Next Day";
+button.onclick = advanceRound;
+}
+
+const initialSetup = loadSavedSetup();
+if (initialSetup) {
+    document.getElementById("district-count").value = initialSetup.districtCount;
+    document.getElementById("tributes-per-district").value = initialSetup.tributesPerDistrict;
+    document.getElementById("daily-weapons").value = initialSetup.dailyWeaponLimit === undefined
+        ? "10"
+        : String(initialSetup.dailyWeaponLimit);
+    document.getElementById("custom-weapons").value = Array.isArray(initialSetup.customWeapons)
+        ? initialSetup.customWeapons.map(item => `${item.name}, ${item.power}`).join("\n")
+        : "";
+    document.getElementById("starting-items").value = initialSetup.startingItems || "";
+    if (initialSetup.feastDay !== undefined) {
+        document.getElementById("feast-day").value = initialSetup.feastDay === null
+            ? "none"
+            : String(initialSetup.feastDay);
+        feastDay = initialSetup.feastDay;
+    }
+    setPersistenceStatus("Saved names are available and will be restored when you customize the roster.");
+} else {
+    setPersistenceStatus("Your names are saved in this browser as you customize them.");
+}
+["feast-day", "daily-weapons", "custom-weapons", "starting-items"].forEach(id => {
+    document.getElementById(id).addEventListener(id === "feast-day" ? "change" : "input", saveSetup);
+});
+</script>
+</body>
+</html>
